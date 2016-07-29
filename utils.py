@@ -1,4 +1,6 @@
 #! /usr/bin/env python
+# -*- coding: UTF-8 -*-
+#coding=utf-8
 
 import csv
 import itertools
@@ -11,6 +13,22 @@ import io
 import array
 from datetime import datetime
 from gru_theano import GRUTheano
+
+def SetCSV_FieldSize():
+    maxInt = sys.maxsize
+    decrement = True
+
+    while decrement:
+        # decrease the maxInt value by factor 10 
+        # as long as the OverflowError occurs.
+
+        decrement = False
+        try:
+            csv.field_size_limit(maxInt)
+        except OverflowError:
+            maxInt = int(maxInt/10)
+            decrement = True
+SetCSV_FieldSize()
 
 SENTENCE_START_TOKEN = "SENTENCE_START"
 SENTENCE_END_TOKEN = "SENTENCE_END"
@@ -30,13 +48,14 @@ def load_data(filename="data/reddit-comments-2015-08.csv", vocabulary_size=2000,
         sentences = itertools.chain(*[nltk.sent_tokenize(x[0].decode("utf-8").lower()) for x in reader])
         # Filter sentences
         sentences = [s for s in sentences if len(s) >= min_sent_characters]
-        sentences = [s for s in sentences if "http" not in s]
+        sentences = [s for s in sentences if "http" not in s]        
         # Append SENTENCE_START and SENTENCE_END
         sentences = ["%s %s %s" % (SENTENCE_START_TOKEN, x, SENTENCE_END_TOKEN) for x in sentences]
     print("Parsed %d sentences." % (len(sentences)))
 
     # Tokenize the sentences into words
     tokenized_sentences = [nltk.word_tokenize(sent) for sent in sentences]
+    #print tokenized_sentences
 
     # Count the word frequencies
     word_freq = nltk.FreqDist(itertools.chain(*tokenized_sentences))
@@ -44,8 +63,9 @@ def load_data(filename="data/reddit-comments-2015-08.csv", vocabulary_size=2000,
 
     # Get the most common words and build index_to_word and word_to_index vectors
     vocab = sorted(word_freq.items(), key=lambda x: (x[1], x[0]), reverse=True)[:vocabulary_size-2]
-    print("Using vocabulary size %d." % vocabulary_size)
-    print("The least frequent word in our vocabulary is '%s' and appeared %d times." % (vocab[-1][0], vocab[-1][1]))
+    #print vocab
+    print("Using vocabulary size %d." % vocabulary_size)    
+    print("The least frequent word in our vocabulary is '%s' and appeared %d times." % (vocab[-1][0].encode('utf-8'), vocab[-1][1]))
 
     sorted_vocab = sorted(vocab, key=operator.itemgetter(1))
     index_to_word = ["<MASK/>", UNKNOWN_TOKEN] + [x[0] for x in sorted_vocab]
@@ -149,7 +169,7 @@ def gradient_check_theano(model, x, y, h=0.001, error_threshold=0.01):
 
 def print_sentence(s, index_to_word):
     sentence_str = [index_to_word[x] for x in s[1:-1]]
-    print(" ".join(sentence_str))
+    print(" ".join(sentence_str).encode('utf-8'))
     sys.stdout.flush()
 
 def generate_sentence(model, index_to_word, word_to_index, min_length=5):
